@@ -24,11 +24,12 @@ public class Reservation implements MapperIf {
 
     private boolean loadSeats() {
         //String selectSeat = "SELECT * FROM seat WHERE booked IS NULL";
-        
-        String selectSeat = "SELECT * FROM (SELECT * FROM seat where (booked IS null AND booking_time < ?) OR reserved IS NULL ORDER BY dbms_random.value) Where ROWNUM = 1 AND seat_no ='A1';";
+
+        String selectSeat = "SELECT * FROM (SELECT * FROM seat where (booked IS NULL AND booking_time < ?) OR reserved IS NULL ORDER BY dbms_random.value) Where ROWNUM = 1";
         PreparedStatement statement;
         try {
             statement = conn.prepareStatement(selectSeat);
+            statement.setLong(1, System.currentTimeMillis());
             ResultSet res = statement.executeQuery();
             while (res.next()) {
                 seats.add(new Seat(res.getString(1), res.getString(2), res.getLong(3), res.getLong(4), res.getLong(5)));
@@ -61,7 +62,7 @@ public class Reservation implements MapperIf {
         PreparedStatement statement;
 
         if (loadSeats()) {
-            s = selectSeat();
+            s = seats.get(0);
 
             if (s == null) {
                 return null;
