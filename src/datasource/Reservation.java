@@ -39,24 +39,30 @@ public class Reservation implements MapperIf {
         return seats.get(0);
     }
 
+    private boolean lockTable() {
+        String lock = "LOCK TABLE seat IN EXCLUSIVE MODE";
+        Boolean lockStatus;
+        try {
+            Statement state = conn.createStatement();
+            lockStatus = state.execute(lock);
+        } catch (SQLException e) {
+            return false;
+        }
+        return !lockStatus;
+    }
+
     @Override
     public Seat reserve(String planeNo, long id) {
         String lock = "LOCK TABLE seat IN EXCLUSIVE MODE";
         String reserveSeat = "UPDATE seat SET reserved = ?, booking_time = ? WHERE seat_no = ? AND reserved";
         PreparedStatement statement;
-        Statement state;
 
         try {
             Seat seat = loadSeats();
-
             if (seat == null) {
                 return null;
             }
-
-            conn.setAutoCommit(false);
-            state = conn.createStatement();
-            boolean lockStatus = state.execute(lock);
-            if (!lockStatus) {
+            if (lockTable()) {
 
                 if (seat.getReserved() == 0) {
                     reserveSeat += " IS NULL";
@@ -70,7 +76,6 @@ public class Reservation implements MapperIf {
                 statement.setLong(2, time);
                 statement.setString(3, seat.getSeatNo());
                 int rows = statement.executeUpdate();
-                conn.commit();
 
                 if (rows != 0) {
                     seat.setReserved(id);
@@ -105,10 +110,11 @@ public class Reservation implements MapperIf {
 
     @Override
     public int book(String planeNo, String seatNo, long id) {
-        String bookSeatSql = "UPDATE seat SET booked = ?, booking_time = ? WHERE seat_no = ?";
+        String bookSeatSql = "UPDATE seat SET booked = ?, booking_time = ? WHERE seat_no = ? AND reserved = ?";
         PreparedStatement statement;
-        int rows = 0;
         Seat seat = getReservedSeat(seatNo);
+
+        int rows = 0;
 
         if (seat == null) {
             return -5;
@@ -131,11 +137,14 @@ public class Reservation implements MapperIf {
         }
 
         try {
-            statement = conn.prepareStatement(bookSeatSql);
-            statement.setLong(1, id);
-            statement.setLong(2, System.currentTimeMillis());
-            statement.setString(3, seatNo);
-            rows = statement.executeUpdate();
+            if (lockTable()) {
+                statement = conn.prepareStatement(bookSeatSql);
+                statement.setLong(1, id);
+                statement.setLong(2, System.currentTimeMillis());
+                statement.setString(3, seatNo);
+                statement.setLong(4, id);
+                rows = statement.executeUpdate();
+            }
         } catch (SQLException ex) {
             System.out.println(ex);
             conManager.releaseConnection();
@@ -150,21 +159,7 @@ public class Reservation implements MapperIf {
 
     @Override
     public void bookAll(String planeNo) {
-        /*  
-        String reserveSeat = "UPDATE seat SET booked = ?, booking_time = ? WHERE plane_no = 'CR9'";
-        PreparedStatement statement;
 
-        try {
-            statement = conn.prepareStatement(reserveSeat);
-            statement.setLong(1, 1);
-            statement.setLong(2, System.currentTimeMillis());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println(e);
-            conManager.releaseConnection();
-        }
-        conManager.releaseConnection();
-         */
     }
 
     @Override

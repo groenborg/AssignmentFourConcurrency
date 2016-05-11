@@ -11,8 +11,10 @@ import datasource.MapperIf;
 public class User implements Runnable {
 
     private final long id;
+    private Controller control;
 
-    public User(long id) {
+    public User(long id, Controller control) {
+        this.control = control;
         this.id = id;
     }
 
@@ -26,7 +28,7 @@ public class User implements Runnable {
             sb.append(" reserved ").append(s.getSeatNo());
 
             try {
-                long time = (long) (Math.random() * 10000);
+                long time = (long) (Math.random() * 8000);
                 Thread.sleep(time);
                 sb.append(" slept ").append(time);
 
@@ -38,6 +40,21 @@ public class User implements Runnable {
             if (chance > 25) {
                 int status = res.book("CR9", s.getSeatNo(), id);
                 sb.append(" booking status: ").append(status);
+
+                switch (status) {
+                    case -1:
+                        control.incrementMinusOne();
+                        break;
+                    case -2:
+                        control.incrementMinusTwo();
+                        break;
+                    case -3:
+                        control.incrementMinusThree();
+                        break;
+                    case 0:
+                        control.incrementSuccessfull();
+                        break;
+                }
             } else {
                 sb.append(" decided not to book");
             }
