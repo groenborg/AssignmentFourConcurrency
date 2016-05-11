@@ -19,7 +19,7 @@ public class User implements Runnable {
     public void act() {
         StringBuilder sb = new StringBuilder();
 
-        MapperIf res = new Reservation("db_033", "123");
+        MapperIf res = new Reservation("cphre31", "krumme24");
         Seat s = res.reserve("CR9", id);
         sb.append("user ").append(id);
         if (s != null) {

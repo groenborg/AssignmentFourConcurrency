@@ -26,9 +26,9 @@ public class Controller {
     }
 
     public void simulate() {
-        ExecutorService executor = Executors.newFixedThreadPool(30);
-        for (int i = 0; i < 1000; i++) {
-            executor.submit(new User(i));
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        for (int i = 0; i < 100; i++) {
+            executor.submit(new User(i + 100));
         }
         executor.shutdown();
     }

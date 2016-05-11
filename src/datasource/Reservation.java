@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 
 /**
@@ -22,9 +23,7 @@ public class Reservation implements MapperIf {
         conn = conManager.getConnection(user, password);
     }
 
-    private boolean loadSeats() {
-        //String selectSeat = "SELECT * FROM seat WHERE booked IS NULL";
-
+    private Seat loadSeats() {
         String selectSeat = "SELECT * FROM (SELECT * FROM seat where (booked IS NULL AND booking_time < ?) OR reserved IS NULL ORDER BY dbms_random.value) Where ROWNUM = 1";
         PreparedStatement statement;
         try {
@@ -37,57 +36,53 @@ public class Reservation implements MapperIf {
         } catch (SQLException e) {
             System.out.println("book: " + e);
         }
-        return !seats.isEmpty();
-    }
-
-    private Seat selectSeat() {
-        Seat selectedSeat = null;
-        for (Seat seat : seats) {
-            if (seat.getReserved() == 0) {
-                selectedSeat = seat;
-                break;
-            } else if (System.currentTimeMillis() - seat.getBookingTime() > 0) {
-                selectedSeat = seat;
-                break;
-            }
-        }
-        return selectedSeat;
+        return seats.get(0);
     }
 
     @Override
     public Seat reserve(String planeNo, long id) {
-        String reserveSeat = "UPDATE seat SET reserved = ?, booking_time = ? WHERE seat_no = ?";
-        int updated = 0;
-        Seat s = null;
+        String lock = "LOCK TABLE seat IN EXCLUSIVE MODE";
+        String reserveSeat = "UPDATE seat SET reserved = ?, booking_time = ? WHERE seat_no = ? AND reserved";
         PreparedStatement statement;
+        Statement state;
 
-        if (loadSeats()) {
-            s = seats.get(0);
+        try {
+            Seat seat = loadSeats();
 
-            if (s == null) {
+            if (seat == null) {
                 return null;
             }
 
-            long time = System.currentTimeMillis() + 5000;
+            conn.setAutoCommit(false);
+            state = conn.createStatement();
+            boolean lockStatus = state.execute(lock);
+            if (!lockStatus) {
 
-            try {
+                if (seat.getReserved() == 0) {
+                    reserveSeat += " IS NULL";
+                } else {
+                    reserveSeat += " = " + seat.getReserved();
+                }
+
+                long time = System.currentTimeMillis() + 5000;
                 statement = conn.prepareStatement(reserveSeat);
                 statement.setLong(1, id);
                 statement.setLong(2, time);
-                statement.setString(3, s.getSeatNo());
-                updated = statement.executeUpdate();
-                //System.out.println(updated);
-            } catch (SQLException e) {
-                System.out.println("res: " + e);
-                conManager.releaseConnection();
-                return null;
+                statement.setString(3, seat.getSeatNo());
+                int rows = statement.executeUpdate();
+                conn.commit();
+
+                if (rows != 0) {
+                    seat.setReserved(id);
+                    seat.setBookingTime(time);
+                    return seat;
+                }
             }
 
-            if (updated != 0) {
-                s.setReserved(id);
-                s.setBookingTime(time);
-                return s;
-            }
+        } catch (SQLException ex) {
+            System.out.println("res: " + ex);
+            conManager.releaseConnection();
+            return null;
         }
         return null;
     }
