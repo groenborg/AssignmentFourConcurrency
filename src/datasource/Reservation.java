@@ -34,9 +34,16 @@ public class Reservation implements MapperIf {
                 seats.add(new Seat(res.getString(1), res.getString(2), res.getLong(3), res.getLong(4), res.getLong(5)));
             }
         } catch (SQLException e) {
-            System.out.println("book: " + e);
+            System.out.println("LoadSeats SQLException: " + e);
+        } catch (Exception ex) {
+            System.out.println("loadSeats Exception: " + ex);
         }
-        return seats.get(0);
+
+        if (seats.isEmpty()) {
+            return null;
+        } else {
+            return seats.get(0);
+        }
     }
 
     private boolean lockTable() {
@@ -47,13 +54,15 @@ public class Reservation implements MapperIf {
             lockStatus = state.execute(lock);
         } catch (SQLException e) {
             return false;
+        } catch (Exception e) {
+            System.out.println("lockTable Exception: " + e);
+            return false;
         }
         return !lockStatus;
     }
 
     @Override
     public Seat reserve(String planeNo, long id) {
-        String lock = "LOCK TABLE seat IN EXCLUSIVE MODE";
         String reserveSeat = "UPDATE seat SET reserved = ?, booking_time = ? WHERE seat_no = ? AND reserved";
         PreparedStatement statement;
 
@@ -85,9 +94,11 @@ public class Reservation implements MapperIf {
             }
 
         } catch (SQLException ex) {
-            System.out.println("res: " + ex);
+            System.out.println("Reserve SQLException: " + ex);
             conManager.releaseConnection();
             return null;
+        } catch (Exception e) {
+            System.out.println("Reserve Exception: " + e);
         }
         return null;
     }
@@ -103,7 +114,9 @@ public class Reservation implements MapperIf {
                 return new Seat(res.getString(1), res.getString(2), res.getLong(3), res.getLong(4), res.getLong(5));
             }
         } catch (SQLException e) {
-            System.out.println("get Reserved seat: " + e);
+            System.out.println("getReservedSeat SQLException: " + e);
+        } catch (Exception e) {
+            System.out.println("getReservedSeat Exception: " + e);
         }
         return null;
     }
@@ -149,7 +162,12 @@ public class Reservation implements MapperIf {
             System.out.println(ex);
             conManager.releaseConnection();
             return -5;
+        } catch (Exception e) {
+            System.out.println("Booking Exception: " + e);
+            conManager.releaseConnection();
+            return -5;
         }
+
         if (rows > 0) {
             return 0;
         } else {
@@ -175,12 +193,16 @@ public class Reservation implements MapperIf {
             statement = conn.prepareStatement(selectSeat);
             ResultSet res = statement.executeQuery();
             if (res.next()) {
+                res.close();
                 return false;
+            } else {
+                res.close();
+                return true;
             }
         } catch (SQLException e) {
-            System.out.println("isAllBooked errored");
+            System.out.println("isAllBooked errored" + e);
         }
-        return true;
+        return false;
     }
 
     @Override

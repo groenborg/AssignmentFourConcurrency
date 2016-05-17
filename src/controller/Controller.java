@@ -5,9 +5,12 @@
  */
 package controller;
 
+import datasource.Reservation;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -48,10 +51,30 @@ public class Controller {
 
     public void simulate() {
         ExecutorService executor = Executors.newFixedThreadPool(10);
-        for (int i = 0; i < 130; i++) {
+        boolean running = true;
+
+        for (int i = 0; i < 600; i++) {
             executor.submit(new User(i + 100, this));
         }
         executor.shutdown();
+
+        Reservation v = new Reservation("cphre31", "krumme24");
+        while (running) {
+
+            boolean isBooked = v.isAllBooked("CR9");
+            if (isBooked) {
+                running = false;
+                executor.shutdownNow();
+                v.end();
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            System.out.println("is all booked: " + isBooked);
+        }
 
         try {
             executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);

@@ -3,6 +3,8 @@ package controller;
 import datasource.Reservation;
 import domain.Seat;
 import datasource.MapperIf;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -22,6 +24,12 @@ public class User implements Runnable {
         StringBuilder sb = new StringBuilder();
 
         MapperIf res = new Reservation("cphre31", "krumme24");
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ex) {
+
+        }
         Seat s = res.reserve("CR9", id);
         sb.append("user ").append(id);
         if (s != null) {
@@ -33,11 +41,12 @@ public class User implements Runnable {
                 sb.append(" slept ").append(time);
 
             } catch (InterruptedException ex) {
+                // System.out.println("User Interrupted by: " + ex);
             }
 
             double chance = Math.random() * 100;
             sb.append(" chance ").append(chance);
-            if (chance > 25) {
+            if (chance > 15) {
                 int status = res.book("CR9", s.getSeatNo(), id);
                 sb.append(" booking status: ").append(status);
 
@@ -68,7 +77,6 @@ public class User implements Runnable {
 
     @Override
     public void run() {
-        System.out.println(id + " Thread started");
         act();
     }
 
